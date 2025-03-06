@@ -1,0 +1,48 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:16
+    user: root
+    environment:
+      - POSTGRES_USER=odoo
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+      - POSTGRES_DB=postgres
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - MAX_CONNECTIONS=200
+      - SHARED_BUFFERS=256MB
+      - WORK_MEM=16MB
+      - MAINTENANCE_WORK_MEM=64MB
+    secrets:
+      - postgres_password
+    restart: always             # run as a service
+    volumes:
+        - ./postgresql:/var/lib/postgresql/data
+
+  odoo17:
+    image: odoo:17
+    user: root
+    depends_on:
+      - db
+    ports:
+      - "${ODOO_PORT:-10017}:8069"
+      - "${CHAT_PORT:-20017}:8072" # live chat
+    tty: true
+    command: --
+    environment:
+      - HOST=db
+      - USER=odoo
+      - PASSWORD_FILE=/run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      #- /etc/timezone:/etc/timezone:ro
+      #- /etc/localtime:/etc/localtime:ro
+      # - ./entrypoint.sh:/entrypoint.sh   # if you want to install additional Python packages, uncomment this line!
+      - ./addons:/mnt/extra-addons
+      - ./enterprise-addons:/mnt/enterprise-addons
+      - ./etc:/etc/odoo
+    restart: always             # run as a service
+    
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
